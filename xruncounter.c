@@ -120,175 +120,6 @@ monitor_stat(FILE *fpsat)
     return 1;
 }
 
-void
-sys_info()
-{
-    FILE *fp;
-    char infostr[BUF_MAX];
-    char logstr[BUF_MAX];
-    char log2str[BUF_MAX];
-
-    printf("\n******************** SYSTEM CHECK *********************\n\n");
-
-    fp = popen("grep -rnw -H '/proc/asound/card'*'/pcm'*'p/sub'*'/status' -e 'RUNNING' | awk -F '/' '{print $4}'|awk '{print substr($0,length,1)}' | uniq", "r");
-    if (fp != NULL) {
-        while (fgets(infostr, sizeof(infostr)-1, fp) != NULL) {
-            strcpy(logstr, "cat /proc/asound/cards | sed -n '/^ ");
-            strcat(logstr, strtok(infostr, "\n"));
-            strcat(logstr, "/p' ");
-            strcat(logstr, " | sed 's/.*:/Sound Playback:/' ");
-            fp = popen(logstr, "r");
-            if (fgets(infostr, sizeof(infostr)-1, fp) != NULL) {
-                printf("    %s", infostr);
-            }
-        }
-    }
-    fp = NULL;
-
-    fp = popen("grep -rnw -H '/proc/asound/card'*'/pcm'*'c/sub'*'/status' -e 'RUNNING' | awk -F '/' '{print $4}'|awk '{print substr($0,length,1)}' | uniq", "r");
-    if (fp != NULL) {
-        while (fgets(infostr, sizeof(infostr)-1, fp) != NULL) {
-            strcpy(logstr, "cat /proc/asound/cards | sed -n '/^ ");
-            strcat(logstr, strtok(infostr, "\n"));
-            strcat(logstr, "/p' ");
-            strcat(logstr, " | sed 's/.*:/Sound Capture:/' ");
-            fp = popen(logstr, "r");
-            if (fgets(infostr, sizeof(infostr)-1, fp) != NULL) {
-                printf("     %s", infostr);
-            }
-        }
-    }
-    fp = NULL;
-
-    fp = popen("lspci | grep VGA | sed 's/.*:/Graphic Card:/'", "r");
-    if (fp != NULL) {
-        if (fgets(infostr, sizeof(infostr)-1, fp) != NULL) {
-            printf("      %s", infostr);
-        }
-    }
-    fp = NULL;
-
-    fp = popen("hostnamectl | sed -e '/Operating System/b' -e '/Kernel/b' -e '/Architecture/b' -e d", "r");
-    if (fp == NULL) {
-        printf("Failed to fetch system informations\n" );
-    } else {
-        while (fgets(infostr, sizeof(infostr)-1, fp) != NULL) {
-            printf("%s", infostr);
-        }
-    }
-    fp = NULL;
-
-    fp = popen("cat /proc/cpuinfo | grep 'model name'| uniq | sed 's/[[:space:]]/ /g' | sed 's/model name /CPU/'", "r");
-    if (fp != NULL) {
-        if (fgets(infostr, sizeof(infostr)-1, fp) != NULL) {
-            printf("               %s", infostr);
-        }
-    }
-    fp = NULL;
-
-    fp = popen("pidof jackd ", "r");
-    if (fp == NULL) {
-        fprintf(stderr,"jack isn't running?\n" );
-    } else {
-        if (fgets(infostr, sizeof(infostr)-1, fp) != NULL) {
-            strcpy(logstr, "ps -p ");
-            strcat(logstr, strtok(infostr, "\n"));
-            strcat(logstr, " -o command=");
-            strcpy(log2str, logstr);
-            fp = NULL;
-            fp = popen(logstr, "r");
-            if (fgets(infostr, sizeof(infostr)-1, fp) != NULL) {
-                printf("\n***************** jackd start parameter ****************\n\n");
-                printf("    %s", infostr);
-            }
-            strcat(logstr, "| grep -oP '(?<=-n).*' | cut  -d' ' -f1");
-            fp = NULL;
-            fp = popen(logstr, "r");
-            if (fgets(infostr, sizeof(infostr)-1, fp) != NULL) {
-                strcpy(nperiods, strtok(infostr, "\n"));
-            }
-            strcat(log2str, "| grep -oP '(?<=-P).*' | cut  -d' ' -f1");
-            fp = NULL;
-            fp = popen(log2str, "r");
-            if (fgets(infostr, sizeof(infostr)-1, fp) != NULL) {
-                strcpy(rtprio, strtok(infostr, "\n"));
-            }
-        } else {
-            fp = NULL;
-            fp = popen("pidof jackdbus ", "r");
-            if (fp == NULL) {
-                fprintf(stderr,"jackdbus isn't running?\n" );
-            } else {
-                if (fgets(infostr, sizeof(infostr)-1, fp) != NULL) {
-                    printf("\n****************** jackd dbus running ******************\n\n");
-                    strcpy(logstr, getenv("HOME"));
-                    strcat(logstr, "/.config/jack/conf.xml");
-                    fp = NULL;
-                    fp = fopen(logstr, "r");
-                    if (fp == NULL) {
-                        fprintf(stderr,".config/jack/conf.xml not found\n" );
-                    } else {
-                        while (fgets(infostr, sizeof(infostr), fp)) {
-                            if(strstr(infostr, "nperiods") != NULL) {
-                                const char *PATTERN1 = "<option name=\"nperiods\">";
-                                const char *PATTERN2 = "</option>";
-                                char *target = NULL;
-                                char *start, *end;
-
-                                if ( (start = strstr( infostr, PATTERN1 )) ) {
-                                    start += strlen( PATTERN1 );
-                                    if ( (end = strstr( start, PATTERN2 )) ) {
-                                        target = ( char * )malloc( end - start + 1 );
-                                        memcpy( target, start, end - start );
-                                        target[end - start] = '\0';
-                                    }
-                                }
-                                if ( target ) {
-                                    strcpy(nperiods,target );
-                                    free( target );
-                                }
-                            } else if(strstr(infostr, "realtime-priority") != NULL) {
-                                const char *PATTERN1 = "<option name=\"realtime-priority\">";
-                                const char *PATTERN2 = "</option>";
-                                char *target = NULL;
-                                char *start, *end;
-
-                                if ( (start = strstr( infostr, PATTERN1 )) ) {
-                                    start += strlen( PATTERN1 );
-                                    if ( (end = strstr( start, PATTERN2 )) ) {
-                                        target = ( char * )malloc( end - start + 1 );
-                                        memcpy( target, start, end - start );
-                                        target[end - start] = '\0';
-                                    }
-                                }
-                                if ( target ) {
-                                    strcpy(rtprio,target );
-                                    free( target );
-                                }
-                            }
-                        }
-                    fclose(fp);
-                    }
-                }
-            }
-        }
-    }
-    fp = NULL;
-
-    fp = popen("pactl list short modules | grep jack-", "r");
-    printf("\n********************** Pulseaudio **********************\n\n");
-    if (fp == NULL) {
-        printf("    pulse isn't installed?\n" );
-    } else {
-        if (fgets(infostr, sizeof(infostr)-1, fp) != NULL) {
-            printf("    pulse is active\n" );
-        } else {
-            printf("    pulse is not active\n" );
-        }
-    }
-    pclose(fp);
-
-}
 
 void
 jack_shutdown (void *arg)
@@ -384,7 +215,7 @@ signal_handler (int sig)
 int
 main (int argc, char *argv[])
 {
-    sys_info();
+    //sys_info();
 
     double percent_usage[MAX_CPUS];
 
@@ -447,51 +278,51 @@ main (int argc, char *argv[])
         fprintf (stderr, "Buffer/Periods  %s\n", nperiods);
     }
 
-    if (jack_is_realtime(client[0])) {
-        if(strlen(rtprio)) {
-            fprintf (stderr, "jack running with realtime priority %s\n", rtprio);
-        } else {
-            fprintf (stderr, "jack running with realtime priority\n");
-        }
-    } else {
-        fprintf (stderr, "jack isn't running with realtime priority\n"); 
-    }
+    //if (jack_is_realtime(client[0])) {
+    //    if(strlen(rtprio)) {
+    //        fprintf (stderr, "jack running with realtime priority %s\n", rtprio);
+    //    } else {
+    //        fprintf (stderr, "jack running with realtime priority\n");
+    //    }
+    //} else {
+    //    fprintf (stderr, "jack isn't running with realtime priority\n"); 
+    //}
 
     while (run) {
         usleep (200000);
 
-        if (read_stat) {
-            cpu_info(fpstat, percent_usage);
+        //if (read_stat) {
+            //cpu_info(fpstat, percent_usage);
 
-            for (int i=1; i<CPUS+1; i++) {
-                if (i == 0) {
-                    fprintf (stderr,"Total = %3.2lf%%                                       \n", percent_usage[i]);
-                } else {
-                    fprintf (stderr,"CPU %i = %3.2lf%%                                       \n", i, percent_usage[i]);
-                }
-            }
-        }
+            //for (int i=1; i<CPUS+1; i++) {
+            //    if (i == 0) {
+            //        fprintf (stderr,"Total = %3.2lf%%                                       \n", percent_usage[i]);
+            //    } else {
+            //        fprintf (stderr,"CPU %i = %3.2lf%%                                       \n", i, percent_usage[i]);
+            //    }
+            //}
+        //}
         fprintf (stderr, "DSP load %.2f%s use %.2fms from %.2fms jack cycle time \r",
          jack_cpu_load(client[0]),"%", elapsedTime[0], round_trip[0]);
 
-        if (read_stat) {
-            for (int i = 1; i < CPUS+1; i++) {
-                fprintf(stderr,"%s", terminal_moveup);
-            }
-        }
+        //if (read_stat) {
+        //    for (int i = 1; i < CPUS+1; i++) {
+        //        fprintf(stderr,"%s", terminal_moveup);
+        //    }
+        //}
     }
-    if (read_stat) {
-        for (int i = 1; i < CPUS+2; i++) {
-            fprintf(stderr,"%s", terminal_clearline);
-            fprintf(stderr,"%s", terminal_movedown);
-        }
-        for (int i = 1; i < CPUS+1; i++) {
-            fprintf(stderr,"%s", terminal_moveup);
-        }
-    }
-    fprintf(stderr, "in complete %i Xruns in %i cycles                                  \n", xruns[0], grow[0]/grow_it);
-    fprintf(stderr, "first Xrun happen at DSP load %.2f%s in cycle %i\n", dsp_load, "%", first_x_run);
-    fprintf(stderr, "process takes %.2fms from total %.2fms jack cycle time\n",first_xrun_ms, xrt);
+    //if (read_stat) {
+    //   for (int i = 1; i < CPUS+2; i++) {
+    //        fprintf(stderr,"%s", terminal_clearline);
+    //        fprintf(stderr,"%s", terminal_movedown);
+    //    }
+    //    for (int i = 1; i < CPUS+1; i++) {
+    //       fprintf(stderr,"%s", terminal_moveup);
+    //    }
+    //}
+    //fprintf(stderr, "in complete %i Xruns in %i cycles                                  \n", xruns[0], grow[0]/grow_it);
+    //fprintf(stderr, "first Xrun happen at DSP load %.2f%s in cycle %i\n", dsp_load, "%", first_x_run);
+    //fprintf(stderr, "process takes %.2fms from total %.2fms jack cycle time\n",first_xrun_ms, xrt);
 
     for (int i=0; i<cpus; i++) {
         jack_client_close (client[i]);
