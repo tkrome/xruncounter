@@ -219,9 +219,9 @@ main (int argc, char *argv[])
 
     double percent_usage[MAX_CPUS];
 
-    sprintf(terminal_clearline, "%c[2K", 0x1B);
-    sprintf(terminal_moveup, "%c[1A", 0x1B);
-    sprintf(terminal_movedown, "%c[1B", 0x1B);
+    //sprintf(terminal_clearline, "%c[2K", 0x1B);
+    //sprintf(terminal_moveup, "%c[1A", 0x1B);
+    //sprintf(terminal_movedown, "%c[1B", 0x1B);
 
     cpus = 1;
     CPUS = get_nprocs();
@@ -246,7 +246,7 @@ main (int argc, char *argv[])
         grow[i] = grow_it;
     }
 
-    printf("\n********************** Test %i Core *********************\n\n", cpus);
+    //printf("\n********************** Test %i Core *********************\n\n", cpus);
 
     for (int i=0; i<cpus; i++) {
         if ((client[i] = jack_client_open ("xruncounter", JackNoStartServer, NULL)) == 0) {
@@ -302,8 +302,8 @@ main (int argc, char *argv[])
             //    }
             //}
         //}
-        fprintf (stderr, "DSP load %.2f%s use %.2fms from %.2fms jack cycle time \r",
-         jack_cpu_load(client[0]),"%", elapsedTime[0], round_trip[0]);
+        //fprintf (stderr, "DSP load %.2f%s use %.2fms from %.2fms jack cycle time \r",
+        // jack_cpu_load(client[0]),"%", elapsedTime[0], round_trip[0]);
 
         //if (read_stat) {
         //    for (int i = 1; i < CPUS+1; i++) {
